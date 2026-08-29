@@ -28,7 +28,10 @@ def mask_uid(uid: str) -> str:
     return uid_str[:2] + '*' * (len(uid_str) - 2)
 
 def execute_coin_task(bili, user_info, config):
-    coins_to_add = int(config.get('COIN_ADD_NUM'))
+    try:
+        coins_to_add = int(config.get('COIN_ADD_NUM', 1))
+    except (TypeError, ValueError):
+        return True, "投币数量配置无效，跳过"
     if coins_to_add <= 0:
         return True, "配置为0，跳过"
     
@@ -46,7 +49,7 @@ def execute_coin_task(bili, user_info, config):
         logger.info("获取动态视频作为投币目标。")
 
     if not video_list:
-        return False, "无法获取视频列表"
+        return True, "无法获取视频列表，已跳过投币"
 
     added_coins = 0
     for bvid in video_list:
@@ -59,7 +62,7 @@ def execute_coin_task(bili, user_info, config):
             logger.info(f"为视频 {bvid} 投币成功。")
         elif "已达到" in msg:
             logger.warning("今日投币上限已满，终止投币。")
-            added_coins = config.get('COIN_ADD_NUM')
+            added_coins = coins_to_add
             break
         else:
             logger.warning(f"为视频 {bvid} 投币失败: {msg}")

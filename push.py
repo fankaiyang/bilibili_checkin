@@ -28,10 +28,10 @@ def format_push_message(all_results):
     return "\n".join(content)
 
 def send_to_pushplus(token, title, content):
-    url = "http://www.pushplus.plus/send"
+    url = "https://www.pushplus.plus/send"
     data = {"token": token, "title": title, "content": content, "template": "markdown"}
     try:
-        res = requests.post(url, json=data)
+        res = requests.post(url, json=data, timeout=10)
         if res.json().get('code') == 200:
             logger.info('PushPlus 推送成功！')
         else:
