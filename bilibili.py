@@ -8,9 +8,10 @@ class BilibiliTask:
         self.cookie = cookie
         self._ensure_buvid()
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
             'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com',
             'Cookie': self.cookie
         }
         self.csrf = self._get_csrf()
@@ -89,7 +90,14 @@ class BilibiliTask:
     def share_video(self, bvid):
         if not self.csrf: return False, "Bili_jct(csrf) 未找到"
         url = 'https://api.bilibili.com/x/web-interface/share/add'
-        data = {'bvid': bvid, 'csrf': self.csrf}
+        data = {
+            'bvid': bvid,
+            'csrf': self.csrf,
+            'eab_x': 2,
+            'ramval': 0,
+            'source': 'web_normal',
+            'ga': 1,
+        }
         try:
             res = requests.post(url, headers=self.headers, data=data, timeout=10)
             data = res.json()
