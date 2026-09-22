@@ -5,6 +5,12 @@ from loguru import logger
 from bilibili import BilibiliTask
 from push import format_push_message, send_to_pushplus
 
+IGNORE_FAIL_KEYWORDS = ["未配置", "跳过", "已下线"]
+RISK_CONTROL_FAIL_KEYWORDS = [
+    "账号异常", "操作失败", "风控", "访问过于频繁", "操作过于频繁",
+    "请求错误", "稍后再试", "账号未登录", "risk control", "-352", "-403", "-412",
+]
+
 class BeijingFormatter:
     @staticmethod
     def format(record):
@@ -133,28 +139,27 @@ def main():
 
         # 账号任务成功标志
         account_failed = False
-        valid_task_count = 0
-        valid_success_count = 0
+        hard_failure_count = 0
 
         # 任务日志输出
         for task_name, (success, msg) in tasks_result.items():
             if "push" in task_name or "推送" in task_name:
                 continue
-            level = logger.info if success else logger.error
             masked_account_name = mask_string(final_user_info.get('uname')) if final_user_info else f'账号{i}'
-            if msg and any(k in msg for k in IGNORE_FAIL_KEYWORDS):
-                level(f"[账号{i}] {task_name}: 跳过，原因: {msg}")
-                continue  # 跳过统计
-            # 统计有效任务
-            valid_task_count += 1
             if success:
-                valid_success_count += 1
-                level(f"[账号{i}] {task_name}: 成功")
-            else:
-                level(f"[账号{i}] {task_name}: 失败，原因: {msg}")
+                logger.info(f"[账号{i}] {task_name}: 成功")
+                continue
+            if msg and any(k in msg for k in IGNORE_FAIL_KEYWORDS):
+                logger.warning(f"[账号{i}] {task_name}: 跳过，原因: {msg}")
+                continue
+            if msg and any(k in msg for k in RISK_CONTROL_FAIL_KEYWORDS):
+                logger.warning(f"[账号{i}] {task_name}: 被风控拦截，原因: {msg}")
+                continue
+            hard_failure_count += 1
+            logger.error(f"[账号{i}] {task_name}: 失败，原因: {msg}")
 
         # 判断账号是否失败
-        if not user_info or valid_task_count == 0 or valid_success_count == 0:
+        if not user_info or hard_failure_count > 0:
             account_failed = True
 
         # 用户信息分段输出
@@ -188,8 +193,6 @@ def main():
     else:
         logger.info("所有账号任务全部成功！")
         sys.exit(0)
-
-IGNORE_FAIL_KEYWORDS = ["未配置", "跳过", "已下线"]
 
 if __name__ == '__main__':
     main()
